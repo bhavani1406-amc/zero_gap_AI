@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Calendar, Loader2, Sparkles, Trash2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, logActivity } from "@/lib/auth";
 import { localDb } from "@/lib/local-db";
@@ -22,6 +22,7 @@ type Task = {
   hour_block: number;
   title: string;
   description: string | null;
+  udemy_query?: string;
   completed: boolean;
 };
 
@@ -61,6 +62,7 @@ function RoadmapPage() {
         hour_block: t.hour_block,
         title: t.title,
         description: t.description,
+        udemy_query: t.udemy_query ?? "",
         completed: false,
       }));
       const existing = localDb.getTasks(user!.id) as Task[];
@@ -154,6 +156,16 @@ function RoadmapPage() {
                         <span className={`font-medium text-sm ${t.completed ? "line-through text-muted-foreground" : ""}`}>{t.title}</span>
                       </div>
                       {t.description && <p className={`text-xs mt-1 ${t.completed ? "text-muted-foreground/60" : "text-muted-foreground"}`}>{t.description}</p>}
+                      {t.udemy_query && (
+                        <a
+                          href={`https://www.udemy.com/courses/search/?q=${encodeURIComponent(t.udemy_query)}&sort=highest-rated`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 transition"
+                        >
+                          <BookOpen className="size-2.5" /> Udemy: {t.udemy_query}
+                        </a>
+                      )}
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => remove(t.id)} className="text-muted-foreground hover:text-destructive">
                       <Trash2 className="size-3.5" />

@@ -27,6 +27,7 @@ export const Route = createFileRoute("/api/generate-roadmap")({
                         hour_block: { type: "string", description: "Approximate hour into the 48h plan (e.g. '0', '4', '12')" },
                         title: { type: "string", description: "Short imperative task title" },
                         description: { type: "string", description: "Concrete steps + expected output (1-2 sentences)" },
+                        udemy_query: { type: "string", description: "2-4 word Udemy search query for the skill in this task (e.g. 'React hooks tutorial', 'Python machine learning')" },
                       },
                       required: ["hour_block", "title", "description"],
                     },

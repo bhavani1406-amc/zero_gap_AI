@@ -18,11 +18,11 @@ export const Route = createFileRoute("/api/market-trend")({
               parameters: {
                 type: "object",
                 properties: {
-                  growth_probability: { type: "integer", minimum: 0, maximum: 100, description: "Probability (0-100) this role will be highly beneficial in 2-3 years" },
-                  demand_today: { type: "integer", minimum: 0, maximum: 100 },
-                  demand_2027: { type: "integer", minimum: 0, maximum: 100 },
-                  demand_2028: { type: "integer", minimum: 0, maximum: 100 },
-                  demand_2029: { type: "integer", minimum: 0, maximum: 100 },
+                  growth_probability: { type: "number", description: "Probability (0-100) this role will be highly beneficial in 2-3 years" },
+                  demand_today: { type: "number" },
+                  demand_2027: { type: "number" },
+                  demand_2028: { type: "number" },
+                  demand_2029: { type: "number" },
                   trend_direction: { type: "string", enum: ["rising_fast", "rising", "stable", "declining"] },
                   avg_salary_inr_lakhs: { type: "number", description: "Average annual salary in India (lakhs INR) for entry-mid level" },
                   top_skills: { type: "array", items: { type: "string" } },

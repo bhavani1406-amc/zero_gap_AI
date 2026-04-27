@@ -1,6 +1,56 @@
-// Groq Cloud API — OpenAI-compatible, very fast free tier
-const DEFAULT_MODEL = "llama-3.3-70b-versatile";
+// AI provider: AMD Developer Cloud (MI300X vLLM) PRIMARY → Groq Cloud FALLBACK
 const GROQ_API = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+type ProviderResult =
+  | { ok: true; data: any }
+  | { ok: false; status: number; text: string; shouldFallback: boolean };
+
+async function tryProvider(
+  url: string,
+  apiKey: string,
+  model: string,
+  body: any
+): Promise<ProviderResult> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ...body, model }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      // 429 and 401 → do NOT fallback, surface immediately
+      const shouldFallback = res.status >= 500 && res.status <= 504;
+      return { ok: false, status: res.status, text, shouldFallback };
+    }
+
+    const data = await res.json();
+    return { ok: true, data };
+  } catch (err: any) {
+    // Network error → fallback
+    console.warn("[AI] Network error, will fallback:", err?.message ?? err);
+    return { ok: false, status: 0, text: err?.message ?? "Network error", shouldFallback: true };
+  }
+}
+
+function parseToolResult(message: any, toolName: string): any {
+  const toolCall = message?.tool_calls?.[0];
+  if (toolCall?.function?.arguments) {
+    return typeof toolCall.function.arguments === "string"
+      ? JSON.parse(toolCall.function.arguments)
+      : toolCall.function.arguments;
+  }
+  // Fallback: parse JSON from text content
+  const raw = message?.content ?? "";
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  throw new Error(`No tool call in response for tool: ${toolName}`);
+}
 
 export async function callAI(opts: {
   system: string;
@@ -8,13 +58,11 @@ export async function callAI(opts: {
   tool?: { name: string; description: string; parameters: any };
   model?: string;
 }) {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY missing from environment");
-
-  const model = opts.model ?? DEFAULT_MODEL;
+  const amdUrl = process.env.AMD_API_URL;
+  const amdKey = process.env.AMD_API_KEY;
+  const amdModel = process.env.AMD_MODEL ?? "llama-3.3-70b";
 
   const body: any = {
-    model,
     messages: [
       { role: "system", content: opts.system },
       { role: "user", content: opts.user },
@@ -27,39 +75,40 @@ export async function callAI(opts: {
     body.tool_choice = { type: "function", function: { name: opts.tool.name } };
   }
 
-  const res = await fetch(GROQ_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  // ── Try AMD first if configured ──
+  if (amdUrl && amdKey) {
+    const result = await tryProvider(amdUrl, amdKey, opts.model ?? amdModel, body);
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error(`Groq API HTTP ${res.status}:`, text.slice(0, 500));
-    if (res.status === 429) throw new Error("Rate limit exceeded — please try again in a moment.");
-    if (res.status === 401) throw new Error("Groq API: Invalid API key. Check GROQ_API_KEY.");
-    throw new Error(`Groq API error ${res.status}: ${text.slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const message = data.choices?.[0]?.message;
-
-  if (opts.tool) {
-    const toolCall = message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      return typeof toolCall.function.arguments === "string"
-        ? JSON.parse(toolCall.function.arguments)
-        : toolCall.function.arguments;
+    if (result.ok) {
+      const message = result.data.choices?.[0]?.message;
+      if (opts.tool) return parseToolResult(message, opts.tool.name);
+      return message?.content ?? "";
     }
-    // Fallback: parse JSON from text
-    const raw = message?.content ?? "";
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    throw new Error("No tool call in Groq response");
+
+    // Hard errors — do not fallback
+    if (result.status === 429) throw new Error("Rate limit exceeded — please try again in a moment.");
+    if (result.status === 401) throw new Error("AMD API: Invalid API key. Check AMD_API_KEY.");
+
+    if (result.shouldFallback) {
+      console.warn(`[AI] AMD Cloud error ${result.status}, falling back to Groq:`, result.text.slice(0, 200));
+    } else {
+      throw new Error(`AMD API error ${result.status}: ${result.text.slice(0, 300)}`);
+    }
   }
 
+  // ── Groq fallback ──
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) throw new Error("GROQ_API_KEY missing from environment");
+
+  const groqResult = await tryProvider(GROQ_API, groqKey, opts.model ?? GROQ_MODEL, body);
+
+  if (!groqResult.ok) {
+    if (groqResult.status === 429) throw new Error("Rate limit exceeded — please try again in a moment.");
+    if (groqResult.status === 401) throw new Error("Groq API: Invalid API key. Check GROQ_API_KEY.");
+    throw new Error(`Groq API error ${groqResult.status}: ${groqResult.text.slice(0, 300)}`);
+  }
+
+  const message = groqResult.data.choices?.[0]?.message;
+  if (opts.tool) return parseToolResult(message, opts.tool.name);
   return message?.content ?? "";
 }

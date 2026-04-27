@@ -130,7 +130,7 @@ function useProctoring(active: boolean, onViolation: (reason: string) => void) {
 }
 
 // ── 4-week roadmap generator ──
-async function generateWeeklyRoadmap(domain: string, pct: number): Promise<string> {
+async function generateWeeklyRoadmap(domain: string, pct: number): Promise<{ intro: string; weeks: { title: string; tasks: { title: string; description: string; udemy_query?: string }[] }[] }> {
   const level = pct >= 80 ? "advanced" : pct >= 60 ? "intermediate" : pct >= 40 ? "beginner-intermediate" : "beginner";
   const weeks = pct >= 60 ? 4 : 6;
   const res = await fetch("/api/generate-roadmap", {
@@ -143,22 +143,22 @@ async function generateWeeklyRoadmap(domain: string, pct: number): Promise<strin
   const data = await res.json();
   if (!res.ok) throw new Error(data.error);
 
-  const intro = data.intro ?? "";
   const tasks: any[] = data.tasks ?? [];
-
-  // Group into weeks
   const weekSize = Math.ceil(tasks.length / weeks);
-  let out = `${intro}\n\n`;
+  const weekGroups = [];
   for (let w = 0; w < weeks; w++) {
-    const weekTasks = tasks.slice(w * weekSize, (w + 1) * weekSize);
-    if (weekTasks.length === 0) continue;
-    out += `━━━ WEEK ${w + 1} ━━━\n`;
-    weekTasks.forEach((t: any) => {
-      out += `  ✦ ${t.title}\n    ${t.description}\n`;
+    const slice = tasks.slice(w * weekSize, (w + 1) * weekSize);
+    if (slice.length === 0) continue;
+    weekGroups.push({
+      title: `Week ${w + 1}`,
+      tasks: slice.map((t: any) => ({
+        title: t.title,
+        description: t.description ?? "",
+        udemy_query: t.udemy_query ?? "",
+      })),
     });
-    out += "\n";
   }
-  return out;
+  return { intro: data.intro ?? "", weeks: weekGroups };
 }
 
 function MockTestPage() {
@@ -173,7 +173,7 @@ function MockTestPage() {
   const [codingAnswers, setCodingAnswers] = useState<Record<number, string>>({});
   const [currentIdx, setCurrentIdx] = useState(0);
   const [results, setResults] = useState<any>(null);
-  const [roadmap, setRoadmap] = useState<string | null>(null);
+  const [roadmap, setRoadmap] = useState<{ intro: string; weeks: { title: string; tasks: { title: string; description: string; udemy_query?: string }[] }[] } | null>(null);
   const [loadingRoadmap, setLoadingRoadmap] = useState(false);
   const [camReady, setCamReady] = useState<boolean | null>(null);
   const [violationReason, setViolationReason] = useState<string | null>(null);
@@ -577,40 +577,38 @@ function MockTestPage() {
               </Button>
             ) : (
               <div className="space-y-4">
-                {roadmap.split("━━━ WEEK ").filter(Boolean).map((block, wi) => {
-                  const lines = block.split("\n").filter(Boolean);
-                  const weekTitle = `Week ${lines[0]?.replace("━━━", "").trim() ?? wi + 1}`;
-                  const tasks = lines.slice(1).filter(l => l.trim().startsWith("✦"));
-                  return (
-                    <div key={wi} className="rounded-xl border border-border/60 overflow-hidden">
-                      <div className="px-4 py-2.5 bg-primary/10 border-b border-border/60 flex items-center gap-2">
-                        <BookOpen className="size-4 text-primary" />
-                        <span className="font-semibold text-sm">{weekTitle}</span>
-                      </div>
-                      <div className="p-4 space-y-3">
-                        {tasks.map((task, ti) => {
-                          const [title, ...descParts] = task.replace("✦ ", "").split("\n    ");
-                          return (
-                            <div key={ti} className="flex gap-3">
-                              <div className="size-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-xs font-bold text-primary shrink-0 mt-0.5">{ti + 1}</div>
-                              <div>
-                                <div className="text-sm font-medium">{title}</div>
-                                {descParts.length > 0 && <div className="text-xs text-muted-foreground mt-0.5">{descParts.join(" ")}</div>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {tasks.length === 0 && (
-                          <pre className="text-xs text-muted-foreground whitespace-pre-wrap">{lines.slice(1).join("\n")}</pre>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {/* Fallback if format doesn't match */}
-                {!roadmap.includes("━━━ WEEK") && (
-                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap bg-background/40 border border-border/60 rounded-lg p-4">{roadmap}</pre>
+                {roadmap.intro && (
+                  <p className="text-sm text-muted-foreground italic">{roadmap.intro}</p>
                 )}
+                {roadmap.weeks.map((week, wi) => (
+                  <div key={wi} className="rounded-xl border border-border/60 overflow-hidden">
+                    <div className="px-4 py-2.5 bg-primary/10 border-b border-border/60 flex items-center gap-2">
+                      <BookOpen className="size-4 text-primary" />
+                      <span className="font-semibold text-sm">{week.title}</span>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      {week.tasks.map((task, ti) => (
+                        <div key={ti} className="flex gap-3">
+                          <div className="size-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-xs font-bold text-primary shrink-0 mt-0.5">{ti + 1}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium">{task.title}</div>
+                            {task.description && <div className="text-xs text-muted-foreground mt-0.5">{task.description}</div>}
+                            {task.udemy_query && (
+                              <a
+                                href={`https://www.udemy.com/courses/search/?q=${encodeURIComponent(task.udemy_query)}&sort=highest-rated`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 transition"
+                              >
+                                <BookOpen className="size-2.5" /> Udemy: {task.udemy_query}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </Card>

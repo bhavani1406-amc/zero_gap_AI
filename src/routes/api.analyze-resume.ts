@@ -21,8 +21,8 @@ export const Route = createFileRoute("/api/analyze-resume")({
               parameters: {
                 type: "object",
                 properties: {
-                  ats_score: { type: "integer", minimum: 0, maximum: 100, description: "ATS-friendliness score" },
-                  trend_score: { type: "integer", minimum: 0, maximum: 100, description: "How aligned with 2026 market trends" },
+                  ats_score: { type: "number", description: "ATS-friendliness score 0-100" },
+                  trend_score: { type: "number", description: "How aligned with 2026 market trends 0-100" },
                   summary: { type: "string", description: "2-3 sentence overall assessment" },
                   strengths: { type: "array", items: { type: "string" } },
                   weaknesses: { type: "array", items: { type: "string" } },
