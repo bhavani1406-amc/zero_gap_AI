@@ -11,10 +11,13 @@ const cities = [
 
 export function IndiaHeatmap() {
   const [count, setCount] = useState(2847);
+  const [mapVisible, setMapVisible] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setCount((c) => c + 1), 3000);
-    return () => clearInterval(id);
+    // Delay iframe mount so it has non-zero dimensions
+    const t = setTimeout(() => setMapVisible(true), 300);
+    return () => { clearInterval(id); clearTimeout(t); };
   }, []);
 
   return (
@@ -30,11 +33,13 @@ export function IndiaHeatmap() {
 
       {/* Leaflet real map */}
       <div className="max-w-5xl mx-auto rounded-2xl overflow-hidden border border-border/60" style={{ height: 520 }}>
-        <iframe
-          src="/india-heatmap.html"
-          className="w-full h-full border-0"
-          title="India IT Hiring Heatmap"
-        />
+        {mapVisible && (
+          <iframe
+            src="/india-heatmap.html"
+            className="w-full h-full border-0"
+            title="India IT Hiring Heatmap"
+          />
+        )}
       </div>
 
       {/* City list below map */}

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/generate-roadmap")({
                     items: {
                       type: "object",
                       properties: {
-                        hour_block: { type: "integer", minimum: 0, maximum: 48, description: "Approximate hour into the 48h plan" },
+                        hour_block: { type: "string", description: "Approximate hour into the 48h plan (e.g. '0', '4', '12')" },
                         title: { type: "string", description: "Short imperative task title" },
                         description: { type: "string", description: "Concrete steps + expected output (1-2 sentences)" },
                       },
@@ -36,6 +36,13 @@ export const Route = createFileRoute("/api/generate-roadmap")({
               },
             },
           });
+          // Coerce hour_block to number in case Groq returns strings
+          if (result.tasks) {
+            result.tasks = result.tasks.map((t: any) => ({
+              ...t,
+              hour_block: parseInt(t.hour_block, 10) || 0,
+            }));
+          }
           return Response.json(result);
         } catch (e: any) {
           console.error("generate-roadmap error:", e);
