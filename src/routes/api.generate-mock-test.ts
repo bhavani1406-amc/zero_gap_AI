@@ -45,8 +45,6 @@ Requirements:
                 duration: { type: "number" },
                 questions: {
                   type: "array",
-                  minItems: 30,
-                  maxItems: 30,
                   items: {
                     type: "object",
                     properties: {
@@ -56,8 +54,6 @@ Requirements:
                       marks: { type: "number" },
                       options: {
                         type: "array",
-                        minItems: 4,
-                        maxItems: 4,
                         items: {
                           type: "object",
                           properties: {
@@ -70,7 +66,6 @@ Requirements:
                       correct: {
                         type: "array",
                         items: { type: "number" },
-                        minItems: 1,
                       },
                       explanation: { type: "string" },
                     },

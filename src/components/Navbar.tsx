@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth, clearUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Brain, LogOut, Menu, X } from "lucide-react";
 import { toast } from "sonner";
@@ -25,7 +24,7 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    clearUser();
     toast.success("Signed out");
     navigate({ to: "/" });
   };

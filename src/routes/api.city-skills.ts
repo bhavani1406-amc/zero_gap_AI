@@ -20,8 +20,6 @@ export const Route = createFileRoute("/api/city-skills")({
                 properties: {
                   hot_skills: {
                     type: "array",
-                    minItems: 5,
-                    maxItems: 8,
                     items: {
                       type: "object",
                       properties: {
@@ -33,7 +31,7 @@ export const Route = createFileRoute("/api/city-skills")({
                     },
                   },
                   remote_friendly_pct: { type: "integer", minimum: 0, maximum: 100, description: "% of internships in this city that are remote/hybrid (great for students with classes)" },
-                  top_companies: { type: "array", items: { type: "string" }, minItems: 4, maxItems: 8 },
+                  top_companies: { type: "array", items: { type: "string" } },
                   insight: { type: "string", description: "2-3 sentence locality insight including class-friendly tips" },
                 },
                 required: ["hot_skills", "remote_friendly_pct", "top_companies", "insight"],

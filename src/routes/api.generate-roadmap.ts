@@ -21,8 +21,6 @@ export const Route = createFileRoute("/api/generate-roadmap")({
                   intro: { type: "string", description: "1-2 sentence summary of the plan" },
                   tasks: {
                     type: "array",
-                    minItems: 8,
-                    maxItems: 12,
                     items: {
                       type: "object",
                       properties: {
